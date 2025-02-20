@@ -1,0 +1,21 @@
+In programming, a "local variable" refers to a variable accessible only within a specific block of code (like a function), while "automatic" is the default behavior for local variables, meaning they are created and destroyed automatically when entering and exiting the block; a "static" variable, also considered a local variable, retains its value between function calls within the same scope, unlike an automatic variable which is reinitialized each time the function is called.
+
+Key differences:
+
+Lifetime:
+
+Automatic: Created and destroyed within the block of code where it's declared, meaning its value is lost when the block is exited.
+Static: Exists for the entire program execution, retaining its value between function calls within the same scope.
+
+Initialization:
+Automatic: May contain a garbage value if not explicitly initialized.
+Static: Initialized only once when the program starts, and retains that value throughout the program.
+
+Usage:
+Automatic: Used for temporary variables within a function that only need to exist during the execution of that block.
+Static: Used when you need a variable to keep track of a value across multiple function calls within the same scope, like a counter.
+
+The space for a dynamic array doesn't exist until the array is explicitly created at run-time, space is allocated when new[number] is called. the number indicates the number of space/elements to be allocated.
+
+In a dynamic array, we need to allocate memory before using it. But in an associative array, memory can be allocated when it is used. A dynamic array is specific for a particular data type. When it comes to an associative array, elements of an array can be of any type.
+
