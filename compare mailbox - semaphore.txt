@@ -1,0 +1,16 @@
+The diffference i understand between usage of semaphore and mailbox is as follows
+
+--Semaphores canot be used for data transfer between two concurrent processes ,however it helps in synchronizing them.As an example if two parallel processes lets say two different drivers are driving a same set of signals ,then to avoid contention it becomes necessary to use semaphores.
+
+Mailboxes can be used to transfer data between two concurrent processes ,lets say our DUT supports 2 different bus protocols for accessing register space.We would have a scenario wherein we write a register from one bus driver and read it from the other bus
+
+monitor,in that case we need to pass address and the expected data from the register or atleast the address incase we have a shadow register implemented in the Testbench
+
+A semaphore provides a way to lock a bus for exclusivity. The common way to explain it is by thinking about a family that has two cars and each car has a set of keys. When someone takes a set of keys, that car is not available until that person is finished with the car and returns the keys. Since there are two cars, two people can use a car at the same time. When one car returns, another person can take the car.
+
+A semaphone has a number of keys associated with it (default is 1). When an access to the bus is required, a key is attempted to be checked out. If there is a key available, the process continues – otherwise it waits until a key is returned. Once the process finishes, it checks the key back in for the next process.
+
+A mailbox is just that – a mailbox. Process put data in and process pull data out as long as there is data available. You can leave the mailbox of unlimited size or you can limit it to a certain size. A mailbox is useful in passing data between classes because you can create a mailbox and then pass that handle into subsequent classes you create.
+
+Think of the generator and driver. A mailbox can be created and then the mailbox handle is passed to the new() constructor for the generator and driver. When the generator generates some data, it packages it up and puts it into the handle that was passed to it during creation. Meanwhile the driver waits for the data to be put into the mailbox and then pulls it out when it arrives using the same handle that was passed to it during construction.
+
