@@ -1,0 +1,129 @@
+Mailboxes in System Verilog
+
+[Email Box at the house gate]
+
+Using fork-join we can create multiple processes which run in parallel. These processes need some mechanism to communicate with each other or share the resources properly. Thus, in System Verilog inter-process communication mechanisms such as mailbox and semaphore were introduced. In this article we will see mailbox in detail. These are used only in writing test benches were different components run on different process and communication between them is required.
+
+What is mailbox?
+Mailbox, as the name suggests, provides a communication channel between 2 processes running in parallel. Mailboxes in SV behave like a real-life mailbox, where there is one sender and receiver. The receiver can get the mail only when it is sent by the sender. If mail is not received the receiver can wait for the mail (blocking) or complete other task and then again look for the received mail (non-blocking). Similarly, if the mailbox is full, the sender cannot send a new mail.
+
+According to the above analogy mailbox provides various tasks and functions to facilitate the behavior shown above.
+
+Syntax
+mailbox mb;
+mb = new();
+How are 2 processes connected using mailbox?
+We have seen that mailboxes can be used to communicate between 2 processes. But how the connection is made. There will be a parent process which will start the sub-process. Mailbox is defined and declared inside the parent process. This mailbox handle can then be used by the sub-processes to communicate with each other.
+
+mailbox connection
+Mailbox connection between 2 process
+
+Bounded and Unbounded Mailboxes
+Mailboxes are just like queues but unlike queues it follows strict FIFO. Which means the elements can only be accessed in FIFO behavior and cannot be indexed. The size of FIFO keeps on growing as we put more elements into it.
+
+If there is no restriction on the size of FIFO, i.e., it can grow indefinitely it is known as unbounded FIFO. Similarly, if there is a restriction in the size of the FIFO and FIFO cannot grow behind that limit it is known as bounded FIFO.
+
+Internally mailboxes also have a FIFO, thus mailboxes can be unbounded or bounded. In unbounded mailbox sender process can put data without any restrictions.
+
+Methods of Mailbox
+System Verilog provides various methods in mailbox to facilitate blocking and non-blocking behavior as we have discussed earlier. These methods are:
+
+new() - This function creates a new instance of the mailbox and returns the handle. If no parameter is passed unbounded mailbox is created else bounded mailbox is created which can store max number of elements as specified.
+put() – This is a blocking task and is used to write some data to the mailbox. If the mailbox is full it will wait for the mailbox to have some space.
+try_put() - This is a non-blocking function. This will try to write a message in the mailbox. If the mailbox is full or due to some reason it cannot write it will return a status value of 0 or else return a positive value.
+get() – This is a blocking task and used to get data from the mailbox. This method also deletes the data from mailbox after retrieving it.
+try_get() – Same as get() method but this is non-blocking function. Function returns positive number if data is retrieved from mailbox else returns zero.
+peek() – This is similar to get() method in nature but this task does not delete the data from the mailbox. As name suggests it just peeks into the mailbox and get back data without changing any contents of the mailbox.
+try_peek() – Similar to peek() method but is non-blocking function. Returns positive number if any data can be retrieved from the mailbox else returns 0.
+num() – This function returns the number of data elements that are currently present in mailbox.
+Example
+
+module mailbox_demo();
+    mailbox mbx1, mbx2;
+    initial begin
+        mbx1 = new(4); // bounded mailbox
+        mbx2 = new(); // unbounded mailbox
+        fork
+            //  process 1
+            begin:prcs_1
+                bit [7:0] a;
+                repeat(10) begin
+                    a = $urandom_range(34);
+                    mbx1.put(a);
+                    $display("[%0t] Sent data = %0d", $time, a);
+                    #10;
+                end
+            end
+            //  process 2
+            begin:prcs_2
+                bit [7:0] a;
+                repeat(10) begin
+                    mbx1.get(a);
+                    $display("[%0t] Received data = %0d", $time, a);
+                    #20;
+                end
+                //  Non-blocking get
+                //  note that the all elements are already retrieved and deleted
+                //  thus try_get should return 0
+                if(mbx1.try_get(a))
+                    $display("[%0t] Received data = %0d", $time, a);
+                else
+                    $display("No element to retrieve");
+            end
+        join
+    end
+endmodule
+Output
+# [0] Sent data = 21
+# [0] Received data = 21
+# [10] Sent data = 11
+# [20] Received data = 11
+# [20] Sent data = 7
+# [30] Sent data = 34
+# [40] Received data = 7
+# [40] Sent data = 20
+# [50] Sent data = 18
+# [60] Received data = 34
+# [60] Sent data = 6
+# [70] Sent data = 17
+# [80] Received data = 20
+# [80] Sent data = 31
+# [100] Received data = 18
+# [100] Sent data = 13
+# [120] Received data = 6
+# [140] Received data = 17
+# [160] Received data = 31
+# [180] Received data = 13
+# No element to retrieve
+
+Parameterized mailbox
+Mailbox that we have discussed till now is generic in nature. This means that we can put data of any data type in the mailbox. These can sometimes lead to run-time errors as the receiver could be expecting data of different data types. In parameterized mailbox, we specifically define the data type of the data which can be passed using mailbox. This restricts the sender from sending any data which is not expected.
+
+Syntax
+mailbox#([data_type]) mbx;
+mbx = new();
+Example
+Copy
+module mailbox_demo1();
+    //  parameterized mailbox having data type of string
+    mailbox#(string) mbx1 = new();
+    initial begin
+        mbx1.put("test1");
+        #5;
+        mbx1.put(12);
+    end
+    initial begin
+        string str;
+        int a;
+        mbx1.get(str);
+        #5;
+        mbx1.get(a);
+    end
+endmodule
+Output
+# ** Error (suppressible): (vsim-7070) mailbox.sv(45): Illegal assignment to type 'string' from type 'bit signed[31:0]':  Assigning a packed type to a string requires a cast
+#    Time: 0 ns  Iteration: 0  Instance: /mailbox_demo1 File: mailbox.sv
+# ** Error: (vsim-8754) mailbox.sv(52): Actual output arg. of type 'int' for formal 'message' of 'get' is not compatible with the formal's type 'string'.
+#    Time: 0 ns  Iteration: 0  Instance: /mailbox_demo1 File: mailbox.sv
+# Error loading design
+We see that in parameterized mailbox if we try to put any data which is not of the specified data type the simulator will give a compile time error.

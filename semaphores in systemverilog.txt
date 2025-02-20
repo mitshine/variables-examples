@@ -1,0 +1,120 @@
+Semaphores in System Verilog
+
+[Lock/Unlock a room with a key]
+
+We have seen that in System Verilog various processes can run in parallel. This can create a problem if 2 processes access some variables. Semaphore provides a solution to this problem. Let’s understand the use of semaphores in detail in this article.
+
+Why are semaphores needed??
+Let us consider a situation where two processes (A and B) are executed in parallel. Now, the process wants to write something to variable X. At the same time process B wants to read from variable X. So, we see that the variable X is a shared resource and can be simultaneously accessed by both the processes.
+
+In SV, we know that all the blocking assignments are executed in the active region. From the event semantics of System Verilog, we know that the execution sequence of statements in active region is not guaranteed. Thus, it may happen that process A writes a new value to the variable first and then it is read by process B. In this scenario process B will get the updated value of the variable.
+
+Also, it is possible that process B reads the data first and then process A writes new value to it. In this scenario the old value is read by process B.
+
+Now, depending on the intended behavior any one of the 2 conditions can be a valid one. But it cannot be ensured how SV will execute it. This is where semaphore comes in.
+
+Apart from the above reason mentioned, semaphores can also help in synchronization of different processes mainly used in test bench design where different components of the test bench need to be synchronized with each other.
+
+What are semaphores?
+Semaphores is basically a way to prevent unintended access to shared variables by different processes. This can be considered as bucket having keys. The process will first need to get a key from this bucket and then only it can continue to execute the remaining code lines. If there are no keys left in the bucket, the process will have to wait until a key is back in bucket.
+
+Syntax
+semaphore sem;
+sem = new();
+In-built methods of Semaphore
+Like mailbox, semaphore also has in-built functions to carry out various operations. Let’s see these function in detail.
+
+new(int keyCount = 0)- This method creates a new handle of semaphore. This handle will be used to get or put keys back into the semaphore. The number of keys stored by semaphore can be passed as an argument.
+get(int keyCount = 1)- This method gets the number of keys passed as argument from the semaphore. If the mentioned number of keys are not present in semaphore than it will wait for the specified number of keys to be available in the semaphore.
+try_get(int keyCount = 1) - this is a non-blocking function which returns 0 if the number of keys are not available else it will return 1. This will not wait for the number of keys to be available.
+put(int keyCount = 1) - this is a task which will put back the specified number of keys back to the semaphore. This is also a blocking method which will block the execution of further statements until the specified number of keys are returned to semaphore.
+Example 1
+Copy
+module sem_example_1;
+   semaphore key;
+   initial begin
+      key = new (1);
+      fork
+         personA ();
+         personB ();
+         #25 personA ();
+      join_none
+   end
+   task getRoom (bit [1:0] id);
+      $display ("[%0t] Trying to get a room for id[%0d] ...", $time, id);
+      key.get (1);
+      $display ("[%0t] Room Key retrieved for id[%0d]", $time, id);
+   endtask
+   task putRoom (bit [1:0] id);
+      $display ("[%0t] Leaving room id[%0d] ...", $time, id);
+      key.put (1);
+      $display ("[%0t] Room Key put back id[%0d]", $time, id);
+   endtask
+   task personA ();
+      getRoom (1);
+      #20 putRoom (1);
+   endtask
+   task personB ();
+      #5  getRoom (2);
+      #10 putRoom (2);
+   endtask
+endmodule
+Output
+# [0] Trying to get a room for id[1] ...
+# [0] Room Key retrieved for id[1]
+# [5] Trying to get a room for id[2] ...
+# [20] Leaving room id[1] ...
+# [20] Room Key put back id[1]
+# [20] Room Key retrieved for id[2]
+# [25] Trying to get a room for id[1] ...
+# [30] Leaving room id[2] ...
+# [30] Room Key put back id[2]
+# [30] Room Key retrieved for id[1]
+# [50] Leaving room id[1] ...
+# [50] Room Key put back id[1]
+Try this code in EDA Playground
+Example 2
+Copy
+/* In semaphore the no of keys given inside the new is just the initial no of keys.
+   More no of keys can be added to the semaphore pusing put() task. If the no of
+   keys inside put() are more than what we have removed from semaphore the total no
+   of keys gets increased as seen in the below code */
+module sem_example_2;
+    semaphore sema;
+    initial begin
+        sema = new(1);
+        fork
+            method1;
+            method2;
+            method3;
+        join
+    end
+    task method1;
+        sema.get(4);
+        $display("[%0t] Method 1 Got control", $time);
+        #30;
+        sema.put(5);
+    endtask
+    task method2;
+        sema.get(1);
+        $display("[%0t] Method 2 Got control", $time);
+        #50;
+        sema.put(4);
+    endtask
+    task method3;
+        if(sema.try_get(4))
+            $display("[%0t] Method 3 Got control", $time);
+        else
+            $display("[%0t] Method 3 failed to get control", $time);
+        #50;
+        sema.put(4);
+    endtask
+endmodule
+Output
+# [0] Method 2 Got control
+# [0] Method 3 failed to get control
+# [50] Method 1 Got control
+Try this code in EDA Playground
+In above example note that initially the semaphore was assigned one key. But second process puts back 4 keys. In semaphore we can put any number of keys back to the semaphore. The key count set using new method does not define the maximum number of keys that the semaphore can store but instead it’s just the initial number of the keys present.
+
+Thus, we see that the process 2 executes first as it requires only one key. When process 2 puts back 4 keys back to the semaphore then process 1 starts executing. This way we can also set priority of the process, i.e., we can define the sequence of execution of different processes.
